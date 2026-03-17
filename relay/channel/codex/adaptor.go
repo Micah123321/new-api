@@ -90,14 +90,13 @@ func (a *Adaptor) ConvertOpenAIResponsesRequest(c *gin.Context, info *relaycommo
 			}
 		}
 	}
-	// Codex backend requires the `instructions` field to be present.
+	if isCompact {
+		return request, nil
+	}
+	// Codex /responses endpoint requires the `instructions` field to be present.
 	// Keep it consistent with Codex CLI behavior by defaulting to an empty string.
 	if len(request.Instructions) == 0 {
 		request.Instructions = json.RawMessage(`""`)
-	}
-
-	if isCompact {
-		return request, nil
 	}
 	// codex: store must be false
 	request.Store = json.RawMessage("false")

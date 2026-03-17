@@ -72,7 +72,8 @@ func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *
 	}
 	adaptor.Init(info)
 	var requestBodyBytes []byte
-	if model_setting.GetGlobalSettings().PassThroughRequestEnabled || info.ChannelSetting.PassThroughBodyEnabled {
+	passThroughEnabled := shouldUsePassThroughRequestForResponses(model_setting.GetGlobalSettings().PassThroughRequestEnabled, info)
+	if passThroughEnabled {
 		storage, err := common.GetBodyStorage(c)
 		if err != nil {
 			return types.NewError(err, types.ErrorCodeReadRequestBodyFailed, types.ErrOptionWithSkipRetry())
@@ -198,4 +199,14 @@ func shouldFallbackResponsesCompactionToResponses(info *relaycommon.RelayInfo, r
 		return false
 	}
 	return resp.StatusCode == http.StatusNotFound
+}
+
+func shouldUsePassThroughRequestForResponses(globalPassThrough bool, info *relaycommon.RelayInfo) bool {
+	if info == nil {
+		return globalPassThrough
+	}
+	if info.RelayMode == relayconstant.RelayModeResponsesCompact {
+		return false
+	}
+	return globalPassThrough || info.ChannelSetting.PassThroughBodyEnabled
 }
