@@ -16,6 +16,7 @@ import (
 	"github.com/QuantumNous/new-api/relay/channel/openai"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relay/constant"
+	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/model_setting"
 	"github.com/QuantumNous/new-api/setting/reasoning"
 	"github.com/QuantumNous/new-api/types"
@@ -92,6 +93,10 @@ func removeFunctionResponseID(request *dto.GeminiChatRequest) {
 }
 
 func (a *Adaptor) ConvertClaudeRequest(c *gin.Context, info *relaycommon.RelayInfo, request *dto.ClaudeRequest) (any, error) {
+	if a.RequestMode == RequestModeOpenSource {
+		c.Set("request_model", request.Model)
+		return service.ClaudeToOpenAIRequest(*request, info)
+	}
 	if v, ok := claudeModelMap[info.UpstreamModelName]; ok {
 		c.Set("request_model", v)
 	} else {

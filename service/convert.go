@@ -87,6 +87,7 @@ func ClaudeToOpenAIRequest(claudeRequest dto.ClaudeRequest, info *relaycommon.Re
 		openAITools = append(openAITools, openAITool)
 	}
 	openAIRequest.Tools = openAITools
+	openAIRequest.ToolChoice, openAIRequest.ParallelTooCalls = convertClaudeToolChoiceToOpenAI(claudeRequest.ToolChoice)
 
 	// Convert messages
 	openAIMessages := make([]dto.Message, 0)
@@ -630,6 +631,50 @@ func toJSONString(v interface{}) string {
 		return "{}"
 	}
 	return string(b)
+}
+
+func convertClaudeToolChoiceToOpenAI(toolChoice any) (any, *bool) {
+	if toolChoice == nil {
+		return nil, nil
+	}
+
+	choice := dto.ClaudeToolChoice{}
+	payload, err := common.Marshal(toolChoice)
+	if err != nil {
+		return nil, nil
+	}
+	if err = common.Unmarshal(payload, &choice); err != nil {
+		return nil, nil
+	}
+
+	var openAIToolChoice any
+	switch choice.Type {
+	case "auto":
+		openAIToolChoice = "auto"
+	case "any":
+		openAIToolChoice = "required"
+	case "none":
+		openAIToolChoice = "none"
+	case "tool":
+		if choice.Name == "" {
+			return nil, nil
+		}
+		openAIToolChoice = map[string]any{
+			"type": "function",
+			"function": map[string]any{
+				"name": choice.Name,
+			},
+		}
+	default:
+		return nil, nil
+	}
+
+	var parallelToolCalls *bool
+	if choice.Type != "none" && choice.DisableParallelToolUse {
+		parallelToolCalls = lo.ToPtr(false)
+	}
+
+	return openAIToolChoice, parallelToolCalls
 }
 
 func GeminiToOpenAIRequest(geminiRequest *dto.GeminiChatRequest, info *relaycommon.RelayInfo) (*dto.GeneralOpenAIRequest, error) {
