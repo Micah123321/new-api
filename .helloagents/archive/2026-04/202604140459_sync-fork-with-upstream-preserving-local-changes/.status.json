@@ -1,0 +1,10 @@
+{
+  "status": "completed",
+  "completed": 6,
+  "failed": 0,
+  "pending": 0,
+  "total": 6,
+  "percent": 100,
+  "current": "已完成并推送到 fork 同步分支",
+  "updated_at": "2026-04-14 05:12:00"
+}
