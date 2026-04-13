@@ -23,9 +23,8 @@ import (
 	"github.com/QuantumNous/new-api/types"
 	"github.com/samber/lo"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 )
 
 func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types.NewAPIError) {
@@ -93,7 +92,7 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		if containAudioTokens && containsAudioRatios {
 			service.PostAudioConsumeQuota(c, info, usage, "")
 		} else {
-			postConsumeQuota(c, info, usage)
+			service.PostTextConsumeQuota(c, info, usage, nil)
 		}
 		return nil
 	}
@@ -235,11 +234,10 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 	if containAudioTokens && containsAudioRatios {
 		service.PostAudioConsumeQuota(c, info, usage.(*dto.Usage), "")
 	} else {
-		postConsumeQuota(c, info, usage.(*dto.Usage))
+		service.PostTextConsumeQuota(c, info, usage.(*dto.Usage), nil)
 	}
 	return nil
 }
-
 func shouldFallbackToResponsesForLegacyProtocol(
 	info *relaycommon.RelayInfo,
 	request *dto.GeneralOpenAIRequest,
