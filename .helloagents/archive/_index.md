@@ -7,12 +7,14 @@
 
 | 时间戳 | 名称 | 类型 | 涉及模块 | 决策 | 结果 |
 |--------|------|------|---------|------|------|
+| 202604161906 | fix-stripe-webhook-empty-secret-bypass | - | - | - | ✅完成 |
 | 202604140459 | sync-fork-with-upstream-preserving-local-changes | - | - | - | ✅完成 |
 | 202604140454 | fix-vertex-glm5-claude-messages-openapi-compatibility | implementation | relay/channel/vertex, service/convert | fix-vertex-glm5-claude-messages-openapi-compatibility#D001 | ✅完成 |
 
 ## 按月归档
 
 ### 2026-04
+- [202604161906_fix-stripe-webhook-empty-secret-bypass](./2026-04/202604161906_fix-stripe-webhook-empty-secret-bypass/) - 修复 Stripe webhook 在空密钥配置下可被伪造完成充值或订阅的问题
 - [202604140454_fix-vertex-glm5-claude-messages-openapi-compatibility](./2026-04/202604140454_fix-vertex-glm5-claude-messages-openapi-compatibility/) - 修复 Vertex OpenSource `-maas` 模型对 Claude Messages 请求的 OpenAI 兼容转换
 
 ## 结果状态说明

@@ -45,7 +45,7 @@ func SubscriptionRequestStripePay(c *gin.Context) {
 		common.ApiErrorMsg(c, "Stripe 未配置或密钥无效")
 		return
 	}
-	if setting.StripeWebhookSecret == "" {
+	if !stripeWebhookSecretConfigured() {
 		common.ApiErrorMsg(c, "Stripe Webhook 未配置")
 		return
 	}
@@ -107,6 +107,9 @@ func SubscriptionRequestStripePay(c *gin.Context) {
 
 func genStripeSubscriptionLink(referenceId string, customerId string, email string, priceId string) (string, error) {
 	stripe.Key = setting.StripeApiSecret
+	if !stripeWebhookSecretConfigured() {
+		return "", fmt.Errorf("Stripe Webhook 未配置")
+	}
 
 	params := &stripe.CheckoutSessionParams{
 		ClientReferenceID: stripe.String(referenceId),

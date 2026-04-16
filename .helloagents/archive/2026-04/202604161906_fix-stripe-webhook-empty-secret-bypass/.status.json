@@ -1,0 +1,10 @@
+{
+  "status": "completed",
+  "completed": 4,
+  "failed": 0,
+  "pending": 0,
+  "total": 4,
+  "percent": 100,
+  "current": "已完成 Stripe webhook 空密钥绕过修复与回归测试",
+  "updated_at": "2026-04-16 19:11:18"
+}

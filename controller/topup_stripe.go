@@ -29,6 +29,10 @@ const (
 
 var stripeAdaptor = &StripeAdaptor{}
 
+func stripeWebhookSecretConfigured() bool {
+	return strings.TrimSpace(setting.StripeWebhookSecret) != ""
+}
+
 // StripePayRequest represents a payment request for Stripe checkout.
 type StripePayRequest struct {
 	// Amount is the quantity of units to purchase.
@@ -86,6 +90,10 @@ func (*StripeAdaptor) RequestPay(c *gin.Context, req *StripePayRequest) {
 
 	if req.CancelURL != "" && common.ValidateRedirectURL(req.CancelURL) != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "支付取消重定向URL不在可信任域名列表中", "data": ""})
+		return
+	}
+	if !stripeWebhookSecretConfigured() {
+		c.JSON(200, gin.H{"message": "error", "data": "Stripe Webhook 未配置"})
 		return
 	}
 
@@ -152,9 +160,14 @@ func StripeWebhook(c *gin.Context) {
 		c.AbortWithStatus(http.StatusServiceUnavailable)
 		return
 	}
+	if !stripeWebhookSecretConfigured() {
+		log.Printf("Stripe Webhook拒绝处理: webhook secret 未配置\n")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
 
 	signature := c.GetHeader("Stripe-Signature")
-	endpointSecret := setting.StripeWebhookSecret
+	endpointSecret := strings.TrimSpace(setting.StripeWebhookSecret)
 	event, err := webhook.ConstructEventWithOptions(payload, signature, endpointSecret, webhook.ConstructEventOptions{
 		IgnoreAPIVersionMismatch: true,
 	})
@@ -271,6 +284,9 @@ func sessionExpired(event stripe.Event) {
 func genStripeLink(referenceId string, customerId string, email string, amount int64, successURL string, cancelURL string) (string, error) {
 	if !strings.HasPrefix(setting.StripeApiSecret, "sk_") && !strings.HasPrefix(setting.StripeApiSecret, "rk_") {
 		return "", fmt.Errorf("无效的Stripe API密钥")
+	}
+	if !stripeWebhookSecretConfigured() {
+		return "", fmt.Errorf("Stripe Webhook 未配置")
 	}
 
 	stripe.Key = setting.StripeApiSecret
