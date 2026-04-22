@@ -167,7 +167,7 @@ func StripeWebhook(c *gin.Context) {
 		return
 	}
 	if !stripeWebhookSecretConfigured() {
-		log.Printf("Stripe Webhook拒绝处理: webhook secret 未配置\n")
+		logger.LogWarn(ctx, fmt.Sprintf("Stripe webhook 被拒绝 reason=webhook_secret_missing path=%q client_ip=%s", c.Request.RequestURI, c.ClientIP()))
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}

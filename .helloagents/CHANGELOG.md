@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [工作区修复] - 2026-04-22
+
+### 快速修改
+- **[controller/stripe]**: 修复 Stripe webhook 在 `stripeWebhookSecretConfigured()` 为 false 时误用未导入的标准库 `log.Printf`，导致 Docker `go build` 编译失败 [快速修改] [文件: controller/topup_stripe.go:170-173]
+
 ## [v0.12.10] - 2026-04-16
 
 ### 修复
