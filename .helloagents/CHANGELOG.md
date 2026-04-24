@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## [工作区修复] - 2026-04-24
+
+### 快速修改
+- **[relay/tool-billing]**: 修复同步分支在合并上游后遗漏工具计费接口迁移与 channel test 计费辅助函数，消除 Docker `go build` 中的 `operation_setting` 未定义符号和本地包级编译阻断 [快速修改] [文件: relay/compatible_handler.go:357-392, controller/channel-test.go:559-603]
+
+## [v0.12.11] - 2026-04-24
+
+### 修复
+- **[ci/ghcr-workflow]**: 为 `sync/origin-main-with-local7-20260318` 增加 GHCR 自动构建触发，并将同步分支镜像标签隔离为 `origin-main-with-local7-20260318` / `latest-origin-main-with-local7-20260318`，避免覆盖主线 `main/latest` — by yinjianm
+  - 方案: [202604241556_add-ghcr-trigger-for-sync-origin-main-local7-20260318](archive/2026-04/202604241556_add-ghcr-trigger-for-sync-origin-main-local7-20260318/)
+
 ## [工作区修复] - 2026-04-22
 
 ### 快速修改
