@@ -148,6 +148,40 @@ func TestCalculateTextQuotaSummaryUsesAnthropicUsageSemanticFromUpstreamUsage(t 
 	require.Equal(t, 1488, summary.Quota)
 }
 
+func TestCalculateTextQuotaSummaryInfersClaudeSemanticWhenCacheExceedsPrompt(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+
+	relayInfo := &relaycommon.RelayInfo{
+		RelayFormat:     types.RelayFormatOpenAI,
+		OriginModelName: "claude-4-6-opus",
+		PriceData: types.PriceData{
+			ModelRatio:      5,
+			CompletionRatio: 1,
+			CacheRatio:      0.1,
+			GroupRatioInfo:  types.GroupRatioInfo{GroupRatio: 1},
+		},
+		StartTime: time.Now(),
+	}
+
+	usage := &dto.Usage{
+		PromptTokens:     2132,
+		CompletionTokens: 371,
+		PromptTokensDetails: dto.InputTokenDetails{
+			CachedTokens: 133158,
+		},
+	}
+
+	summary := calculateTextQuotaSummary(ctx, relayInfo, usage)
+
+	require.True(t, summary.IsClaudeUsageSemantic)
+	require.Equal(t, "anthropic", summary.UsageSemantic)
+	require.Equal(t, 2132, summary.PromptTokens)
+	// (2132 + 133158*0.1 + 371) * 5 = 79094.
+	require.Equal(t, 79094, summary.Quota)
+}
+
 func TestCacheWriteTokensTotal(t *testing.T) {
 	t.Run("split cache creation", func(t *testing.T) {
 		summary := textQuotaSummary{

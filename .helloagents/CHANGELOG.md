@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [v0.12.12] - 2026-04-28
+
+### 修复
+- **[service/text-quota]**: 修复 Claude 风格缓存 usage 未显式标记语义时被按 OpenAI 语义二次扣减缓存 token，导致使用日志花费落到 `$0.000002` 最小扣费的问题 — by yinjianm
+  - 方案: [202604281458_fix-usage-log-cache-billing-min-quota](archive/2026-04/202604281458_fix-usage-log-cache-billing-min-quota/)
+  - 决策: fix-usage-log-cache-billing-min-quota#D001(使用 token 形态兜底识别 Claude 缓存语义)
+
 ## [工作区修复] - 2026-04-24
 
 ### 快速修改

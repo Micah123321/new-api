@@ -79,6 +79,27 @@ func isLegacyClaudeDerivedOpenAIUsage(relayInfo *relaycommon.RelayInfo, usage *d
 	return usage.ClaudeCacheCreation5mTokens > 0 || usage.ClaudeCacheCreation1hTokens > 0
 }
 
+// cacheCreationTokensFromUsage returns the normalized cache creation token count.
+func cacheCreationTokensFromUsage(usage *dto.Usage) int {
+	if usage == nil {
+		return 0
+	}
+	splitCacheCreationTokens := usage.ClaudeCacheCreation5mTokens + usage.ClaudeCacheCreation1hTokens
+	if usage.PromptTokensDetails.CachedCreationTokens > splitCacheCreationTokens {
+		return usage.PromptTokensDetails.CachedCreationTokens
+	}
+	return splitCacheCreationTokens
+}
+
+// hasClaudeStyleCacheUsage reports whether cache fields cannot be OpenAI-style totals.
+func hasClaudeStyleCacheUsage(usage *dto.Usage) bool {
+	if usage == nil {
+		return false
+	}
+	cacheInputTokens := usage.PromptTokensDetails.CachedTokens + cacheCreationTokensFromUsage(usage)
+	return cacheInputTokens > 0 && cacheInputTokens > usage.PromptTokens
+}
+
 func calculateTextToolCallSurcharge(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, summary *textQuotaSummary) decimal.Decimal {
 	dGroupRatio := decimal.NewFromFloat(summary.GroupRatio)
 	dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
@@ -312,6 +333,9 @@ func usageSemanticFromUsage(relayInfo *relaycommon.RelayInfo, usage *dto.Usage) 
 		return usage.UsageSemantic
 	}
 	if relayInfo != nil && relayInfo.GetFinalRequestRelayFormat() == types.RelayFormatClaude {
+		return "anthropic"
+	}
+	if hasClaudeStyleCacheUsage(usage) {
 		return "anthropic"
 	}
 	return "openai"
