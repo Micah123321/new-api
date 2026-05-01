@@ -6,6 +6,9 @@
 - **[relay/helper]**: 修复 Responses compact 模式模型重定向先剥离 `-openai-compact` 导致完整 compact key 无法命中的问题，并保持基础模型映射兼容 — by yinjianm
   - 类型: 快速修改（无方案包）
   - 文件: relay/helper/model_mapped.go:16-90, relay/helper/model_mapped_test.go:10-93
+- **[middleware/distributor]**: 修复 Responses compact 普通请求复用渠道缓存时可能拿不到最新 `model_mapping`，导致实际请求仍按原模型转发和计费的问题 — by yinjianm
+  - 类型: 快速修改（无方案包）
+  - 文件: middleware/distributor.go:345-376, middleware/distributor_test.go:36-62, model/channel.go:358-366
 
 ## [v0.12.12] - 2026-04-28
 

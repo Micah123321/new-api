@@ -355,6 +355,16 @@ func GetChannelById(id int, selectAll bool) (*Channel, error) {
 	return channel, nil
 }
 
+// GetChannelModelMappingById returns the latest model_mapping for one channel.
+func GetChannelModelMappingById(id int) (string, error) {
+	channel := &Channel{Id: id}
+	err := DB.Select("model_mapping").First(channel, "id = ?", id).Error
+	if err != nil {
+		return "", err
+	}
+	return channel.GetModelMapping(), nil
+}
+
 func BatchInsertChannels(channels []Channel) error {
 	if len(channels) == 0 {
 		return nil

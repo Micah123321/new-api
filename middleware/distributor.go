@@ -347,6 +347,14 @@ func SetupContextForSelectedChannel(c *gin.Context, channel *model.Channel, mode
 	if channel == nil {
 		return types.NewError(errors.New("channel is nil"), types.ErrorCodeGetChannelFailed, types.ErrOptionWithSkipRetry())
 	}
+	modelMapping := channel.GetModelMapping()
+	if strings.HasPrefix(c.Request.URL.Path, "/v1/responses/compact") {
+		// Keep key selection on the cached channel, but refresh mapping so recent
+		// admin edits affect compact billing and upstream model selection.
+		if latestModelMapping, err := model.GetChannelModelMappingById(channel.Id); err == nil {
+			modelMapping = latestModelMapping
+		}
+	}
 	common.SetContextKey(c, constant.ContextKeyChannelId, channel.Id)
 	common.SetContextKey(c, constant.ContextKeyChannelName, channel.Name)
 	common.SetContextKey(c, constant.ContextKeyChannelType, channel.Type)
@@ -364,7 +372,7 @@ func SetupContextForSelectedChannel(c *gin.Context, channel *model.Channel, mode
 		common.SetContextKey(c, constant.ContextKeyChannelOrganization, *channel.OpenAIOrganization)
 	}
 	common.SetContextKey(c, constant.ContextKeyChannelAutoBan, channel.GetAutoBan())
-	common.SetContextKey(c, constant.ContextKeyChannelModelMapping, channel.GetModelMapping())
+	common.SetContextKey(c, constant.ContextKeyChannelModelMapping, modelMapping)
 	common.SetContextKey(c, constant.ContextKeyChannelStatusCodeMapping, channel.GetStatusCodeMapping())
 
 	key, index, newAPIError := channel.GetNextEnabledKey()
