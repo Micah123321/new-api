@@ -27,18 +27,26 @@ import {
 } from '@/components/ui/table'
 import {
   DataTablePagination,
-  DataTableToolbar,
+  DataTableViewOptions,
   TableSkeleton,
   TableEmpty,
   MobileCardList,
 } from '@/components/data-table'
 import { PageFooterPortal } from '@/components/layout'
-import { LOG_TYPE_FILTERS, DEFAULT_LOGS_DATA } from '../constants'
+import { DEFAULT_LOGS_DATA, LOG_TYPE_ENUM } from '../constants'
 import { useColumnsByCategory } from '../lib/columns'
 import { fetchLogsByCategory } from '../lib/utils'
 import type { LogCategory } from '../types'
+import { CommonLogsFilterBar } from './common-logs-filter-bar'
+import { CommonLogsStats } from './common-logs-stats'
+import { TaskLogsFilterBar } from './task-logs-filter-bar'
 
 const route = getRouteApi('/_authenticated/usage-logs/$section')
+
+const logTypeRowTint: Record<number, string> = {
+  [LOG_TYPE_ENUM.ERROR]: 'bg-rose-50/40 dark:bg-rose-950/20',
+  [LOG_TYPE_ENUM.REFUND]: 'bg-blue-50/30 dark:bg-blue-950/15',
+}
 
 interface UsageLogsTableProps {
   logCategory: LogCategory
@@ -59,7 +67,7 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
   } = useTableUrlState({
     search: route.useSearch(),
     navigate: route.useNavigate(),
-    pagination: { defaultPage: 1, defaultPageSize: 20 },
+    pagination: { defaultPage: 1, defaultPageSize: isMobile ? 20 : 100 },
     globalFilter: { enabled: false },
     columnFilters: [
       { columnId: 'created_at', searchKey: 'type', type: 'array' as const },
@@ -147,25 +155,52 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
-  const filters =
-    logCategory === 'common'
-      ? [
-          {
-            columnId: 'created_at',
-            title: t('Log Type'),
-            options: LOG_TYPE_FILTERS.map((opt) => ({
-              value: opt.value,
-              label: t(opt.label),
-            })),
-            singleSelect: true,
-          },
-        ]
-      : []
+  const isCommon = logCategory === 'common'
+
+  const renderRows = () => {
+    const rows = table.getRowModel().rows
+    if (rows.length === 0) return null
+
+    return rows.map((row) => {
+      const logType = (row.original as Record<string, unknown>).type as
+        | number
+        | undefined
+      const tintClass =
+        isCommon && logType != null ? (logTypeRowTint[logType] ?? '') : ''
+
+      return (
+        <TableRow
+          key={row.id}
+          className={cn('transition-colors', tintClass)}
+        >
+          {row.getVisibleCells().map((cell) => (
+            <TableCell key={cell.id} className={isCommon ? 'py-2' : 'py-3.5'}>
+              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            </TableCell>
+          ))}
+        </TableRow>
+      )
+    })
+  }
 
   return (
     <>
-      <div className='space-y-4'>
-        <DataTableToolbar table={table} filters={filters} customSearch={null} />
+      <div className='space-y-3 sm:space-y-4'>
+        {logCategory === 'common' ? (
+          <div className='rounded-md border bg-card/50 p-2 shadow-xs sm:p-3'>
+            <CommonLogsFilterBar
+              stats={<CommonLogsStats />}
+              viewOptions={<DataTableViewOptions table={table} />}
+            />
+          </div>
+        ) : (
+          <div className='rounded-md border bg-card/50 p-2 shadow-xs sm:p-3'>
+            <TaskLogsFilterBar
+              logCategory={logCategory}
+              viewOptions={<DataTableViewOptions table={table} />}
+            />
+          </div>
+        )}
         {isMobile ? (
           <MobileCardList
             table={table}
@@ -183,7 +218,7 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
             )}
           >
             <Table>
-              <TableHeader>
+              <TableHeader className='bg-muted/30 sticky top-0 z-10'>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
@@ -211,18 +246,7 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
                     )}
                   />
                 ) : (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id}>
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className='py-2'>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
+                  renderRows()
                 )}
               </TableBody>
             </Table>
