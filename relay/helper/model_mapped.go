@@ -1,11 +1,11 @@
 package helper
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
+	appcommon "github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/relay/common"
 	relayconstant "github.com/QuantumNous/new-api/relay/constant"
@@ -20,57 +20,39 @@ func ModelMappedHelper(c *gin.Context, info *common.RelayInfo, request dto.Reque
 
 	isResponsesCompact := info.RelayMode == relayconstant.RelayModeResponsesCompact
 	originModelName := info.OriginModelName
-	mappingModelName := originModelName
+	baseModelName := originModelName
 	if isResponsesCompact && strings.HasSuffix(originModelName, ratio_setting.CompactModelSuffix) {
-		mappingModelName = strings.TrimSuffix(originModelName, ratio_setting.CompactModelSuffix)
+		baseModelName = strings.TrimSuffix(originModelName, ratio_setting.CompactModelSuffix)
 	}
 
 	// map model name
 	modelMapping := c.GetString("model_mapping")
 	if modelMapping != "" && modelMapping != "{}" {
 		modelMap := make(map[string]string)
-		err := json.Unmarshal([]byte(modelMapping), &modelMap)
+		err := appcommon.Unmarshal([]byte(modelMapping), &modelMap)
 		if err != nil {
 			return fmt.Errorf("unmarshal_model_mapping_failed")
 		}
 
-		// 支持链式模型重定向，最终使用链尾的模型
-		currentModel := mappingModelName
-		visitedModels := map[string]bool{
-			currentModel: true,
-		}
-		for {
-			if mappedModel, exists := modelMap[currentModel]; exists && mappedModel != "" {
-				// 模型重定向循环检测，避免无限循环
-				if visitedModels[mappedModel] {
-					if mappedModel == currentModel {
-						if currentModel == info.OriginModelName {
-							info.IsModelMapped = false
-							return nil
-						} else {
-							info.IsModelMapped = true
-							break
-						}
-					}
-					return errors.New("model_mapping_contains_cycle")
-				}
-				visitedModels[mappedModel] = true
-				currentModel = mappedModel
+		for _, candidate := range modelMappingCandidates(originModelName, baseModelName, isResponsesCompact) {
+			mappedModel, isMapped, err := resolveModelMapping(modelMap, candidate)
+			if err != nil {
+				return err
+			}
+			if isMapped {
 				info.IsModelMapped = true
-			} else {
+				info.UpstreamModelName = mappedModel
 				break
 			}
-		}
-		if info.IsModelMapped {
-			info.UpstreamModelName = currentModel
 		}
 	}
 
 	if isResponsesCompact {
-		finalUpstreamModelName := mappingModelName
+		finalUpstreamModelName := baseModelName
 		if info.IsModelMapped && info.UpstreamModelName != "" {
 			finalUpstreamModelName = info.UpstreamModelName
 		}
+		finalUpstreamModelName = strings.TrimSuffix(finalUpstreamModelName, ratio_setting.CompactModelSuffix)
 		info.UpstreamModelName = finalUpstreamModelName
 		info.OriginModelName = ratio_setting.WithCompactModelSuffix(finalUpstreamModelName)
 	}
@@ -78,4 +60,33 @@ func ModelMappedHelper(c *gin.Context, info *common.RelayInfo, request dto.Reque
 		request.SetModelName(info.UpstreamModelName)
 	}
 	return nil
+}
+
+func modelMappingCandidates(originModelName, baseModelName string, isResponsesCompact bool) []string {
+	if isResponsesCompact && originModelName != baseModelName {
+		return []string{originModelName, baseModelName}
+	}
+	return []string{baseModelName}
+}
+
+func resolveModelMapping(modelMap map[string]string, originModel string) (string, bool, error) {
+	currentModel := originModel
+	visitedModels := map[string]bool{
+		currentModel: true,
+	}
+
+	for {
+		mappedModel, exists := modelMap[currentModel]
+		if !exists || mappedModel == "" {
+			return currentModel, currentModel != originModel, nil
+		}
+		if visitedModels[mappedModel] {
+			if mappedModel == currentModel {
+				return currentModel, currentModel != originModel, nil
+			}
+			return "", false, errors.New("model_mapping_contains_cycle")
+		}
+		visitedModels[mappedModel] = true
+		currentModel = mappedModel
+	}
 }

@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [v0.12.13] - 2026-05-01
+
+### 快速修改
+- **[relay/helper]**: 修复 Responses compact 模式模型重定向先剥离 `-openai-compact` 导致完整 compact key 无法命中的问题，并保持基础模型映射兼容 — by yinjianm
+  - 类型: 快速修改（无方案包）
+  - 文件: relay/helper/model_mapped.go:16-90, relay/helper/model_mapped_test.go:10-93
+
 ## [v0.12.12] - 2026-04-28
 
 ### 修复
