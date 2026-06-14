@@ -25,6 +25,13 @@ type stripeAPIResponse struct {
 func setupStripeControllerTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
+	originalDB := model.DB
+	originalLogDB := model.LOG_DB
+	originalUsingSQLite := common.UsingSQLite
+	originalUsingMySQL := common.UsingMySQL
+	originalUsingPostgreSQL := common.UsingPostgreSQL
+	originalRedisEnabled := common.RedisEnabled
+
 	gin.SetMode(gin.TestMode)
 	common.UsingSQLite = true
 	common.UsingMySQL = false
@@ -48,6 +55,12 @@ func setupStripeControllerTestDB(t *testing.T) *gorm.DB {
 		if err == nil {
 			_ = sqlDB.Close()
 		}
+		model.DB = originalDB
+		model.LOG_DB = originalLogDB
+		common.UsingSQLite = originalUsingSQLite
+		common.UsingMySQL = originalUsingMySQL
+		common.UsingPostgreSQL = originalUsingPostgreSQL
+		common.RedisEnabled = originalRedisEnabled
 	})
 
 	return db
@@ -92,13 +105,16 @@ func setStripePaymentConfigForTest(t *testing.T, apiSecret string, webhookSecret
 
 	originalAPISecret := setting.StripeApiSecret
 	originalWebhookSecret := setting.StripeWebhookSecret
+	originalPriceID := setting.StripePriceId
 	t.Cleanup(func() {
 		setting.StripeApiSecret = originalAPISecret
 		setting.StripeWebhookSecret = originalWebhookSecret
+		setting.StripePriceId = originalPriceID
 	})
 
 	setting.StripeApiSecret = apiSecret
 	setting.StripeWebhookSecret = webhookSecret
+	setting.StripePriceId = "price_test_123"
 }
 
 func TestStripeWebhookRejectsEmptyWebhookSecret(t *testing.T) {
@@ -111,8 +127,8 @@ func TestStripeWebhookRejectsEmptyWebhookSecret(t *testing.T) {
 
 	StripeWebhook(ctx)
 
-	if recorder.Code != http.StatusBadRequest {
-		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, recorder.Code)
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d", http.StatusForbidden, recorder.Code)
 	}
 }
 
@@ -121,7 +137,7 @@ func TestRequestStripePayRejectsMissingWebhookSecret(t *testing.T) {
 
 	ctx, recorder := newStripeTestContext(t, http.MethodPost, "/api/user/stripe/pay", StripePayRequest{
 		Amount:        getStripeMinTopup(),
-		PaymentMethod: PaymentMethodStripe,
+		PaymentMethod: model.PaymentMethodStripe,
 	})
 
 	RequestStripePay(ctx)
@@ -137,6 +153,7 @@ func TestRequestStripePayRejectsMissingWebhookSecret(t *testing.T) {
 
 func TestSubscriptionRequestStripePayRejectsMissingWebhookSecret(t *testing.T) {
 	db := setupStripeControllerTestDB(t)
+	confirmPaymentComplianceForTest(t)
 	setStripePaymentConfigForTest(t, "sk_test_valid", "")
 
 	plan := &model.SubscriptionPlan{

@@ -70,17 +70,15 @@ func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *
 		return types.NewError(fmt.Errorf("invalid api type: %d", info.ApiType), types.ErrorCodeInvalidApiType, types.ErrOptionWithSkipRetry())
 	}
 	adaptor.Init(info)
-	var requestBodyBytes []byte
+	var requestBodyStorage common.BodyStorage
 	passThroughEnabled := shouldUsePassThroughRequestForResponses(model_setting.GetGlobalSettings().PassThroughRequestEnabled, info)
 	if passThroughEnabled {
 		storage, err := common.GetBodyStorage(c)
 		if err != nil {
 			return types.NewError(err, types.ErrorCodeReadRequestBodyFailed, types.ErrOptionWithSkipRetry())
 		}
-		requestBodyBytes, err = storage.Bytes()
-		if err != nil {
-			return types.NewError(err, types.ErrorCodeReadRequestBodyFailed, types.ErrOptionWithSkipRetry())
-		}
+		requestBodyStorage = storage
+		info.UpstreamRequestBodySize = storage.Size()
 	} else {
 		convertedRequest, err := adaptor.ConvertOpenAIResponsesRequest(c, info, *request)
 		if err != nil {
@@ -107,15 +105,20 @@ func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *
 		}
 
 		logger.LogDebug(c, "requestBody: %s", jsonData)
-		body, size, closer, err := relaycommon.NewOutboundJSONBody(jsonData)
+		storage, err := common.CreateBodyStorage(jsonData)
 		if err != nil {
 			return types.NewError(err, types.ErrorCodeConvertRequestFailed, types.ErrOptionWithSkipRetry())
 		}
-		requestBodyBytes = jsonData
+		defer storage.Close()
+		requestBodyStorage = storage
+		info.UpstreamRequestBodySize = storage.Size()
 	}
 
 	doResponsesRequest := func() (*http.Response, error) {
-		var requestBody io.Reader = bytes.NewReader(requestBodyBytes)
+		if _, err := requestBodyStorage.Seek(0, io.SeekStart); err != nil {
+			return nil, err
+		}
+		var requestBody io.Reader = common.ReaderOnly(requestBodyStorage)
 		respAny, reqErr := adaptor.DoRequest(c, info, requestBody)
 		if reqErr != nil {
 			return nil, reqErr
