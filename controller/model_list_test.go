@@ -39,9 +39,7 @@ func setupModelListControllerTestDB(t *testing.T) *gorm.DB {
 	initModelListColumnNames(t)
 
 	gin.SetMode(gin.TestMode)
-	common.UsingSQLite = true
-	common.UsingMySQL = false
-	common.UsingPostgreSQL = false
+	common.SetDatabaseTypes(common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
 	common.RedisEnabled = false
 
 	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
@@ -73,16 +71,13 @@ func initModelListColumnNames(t *testing.T) {
 
 	originalIsMasterNode := common.IsMasterNode
 	originalSQLitePath := common.SQLitePath
-	originalUsingSQLite := common.UsingSQLite
-	originalUsingMySQL := common.UsingMySQL
-	originalUsingPostgreSQL := common.UsingPostgreSQL
+	originalMainDatabaseType := common.MainDatabaseType()
+	originalLogDatabaseType := common.LogDatabaseType()
 	originalSQLDSN, hadSQLDSN := os.LookupEnv("SQL_DSN")
 	defer func() {
 		common.IsMasterNode = originalIsMasterNode
 		common.SQLitePath = originalSQLitePath
-		common.UsingSQLite = originalUsingSQLite
-		common.UsingMySQL = originalUsingMySQL
-		common.UsingPostgreSQL = originalUsingPostgreSQL
+		common.SetDatabaseTypes(originalMainDatabaseType, originalLogDatabaseType)
 		if hadSQLDSN {
 			require.NoError(t, os.Setenv("SQL_DSN", originalSQLDSN))
 		} else {
@@ -92,9 +87,7 @@ func initModelListColumnNames(t *testing.T) {
 
 	common.IsMasterNode = false
 	common.SQLitePath = fmt.Sprintf("file:%s_init?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
-	common.UsingSQLite = false
-	common.UsingMySQL = false
-	common.UsingPostgreSQL = false
+	common.SetDatabaseTypes(common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
 	require.NoError(t, os.Setenv("SQL_DSN", "local"))
 
 	require.NoError(t, model.InitDB())
@@ -233,6 +226,7 @@ func TestListModelsTokenLimitIncludesTieredBillingModel(t *testing.T) {
 		"zz-token-tiered-visible-model":    `tier("base", p * 1 + c * 2)`,
 		"zz-token-tiered-empty-expr-model": "",
 	})
+	setupModelListControllerTestDB(t)
 
 	db := setupModelListControllerTestDB(t)
 	require.NoError(t, db.Create(&model.User{
